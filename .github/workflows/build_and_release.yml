@@ -72,6 +72,12 @@ jobs:
           echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
           zip -j9v "/tmp/${ARCHIVE_NAME}" "${GITHUB_WORKSPACE}"/aria2c*
         shell: bash
+      - name: 上传 zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: zip.zip
+          path: |
+             "/tmp/${ARCHIVE_NAME}"
       - name: Prerelease assets
         if: github.event_name == 'push' || github.event_name == 'schedule'
         uses: softprops/action-gh-release@v2
