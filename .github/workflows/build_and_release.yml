@@ -2,8 +2,6 @@ name: "Build and Release"
 
 on:
   repository_dispatch:
-    branches:
-      - "*"
   release:
     types:
       - released
