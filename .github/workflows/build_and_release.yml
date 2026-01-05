@@ -77,7 +77,7 @@ jobs:
         with:
           name: zip.zip
           path: |
-             "/tmp/${ARCHIVE_NAME}"
+             "/tmp/${{ env.ARCHIVE_NAME }}"
       - name: Prerelease assets
         if: github.event_name == 'push' || github.event_name == 'schedule'
         uses: softprops/action-gh-release@v2
