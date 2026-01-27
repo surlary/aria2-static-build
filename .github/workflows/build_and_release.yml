@@ -92,3 +92,9 @@ jobs:
           body_path: "${{ github.workspace }}/build_info.md"
           append_body: true
 
+      - name: Upload compiled data
+        uses: actions/upload-artifact@v4
+        with:
+          name: bins
+          path: |
+            "/tmp/${ARCHIVE_NAME}"
