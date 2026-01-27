@@ -1,0 +1,436 @@
+diff -uNr -x '*.json' aria2-master/src/DefaultPieceStorage.cc aria2-modified/src/DefaultPieceStorage.cc
+--- aria2-master/src/DefaultPieceStorage.cc	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/DefaultPieceStorage.cc	2026-01-27 09:52:34.000000000 +0800
+@@ -607,7 +607,18 @@
+   }
+   for (auto& e : fileEntries) {
+     if (e->isRequested()) {
+-      bitfieldMan_->addFilter(e->getOffset(), e->getLength());
++      // Check if file extensions are specified in the option
++      if (option_ && !option_->get(PREF_FILE_EXTENSIONS).empty()) {
++        // Use the new extension filtering logic
++        if (e->hasAllowedExtension(option_->get(PREF_FILE_EXTENSIONS))) {
++          bitfieldMan_->addFilter(e->getOffset(), e->getLength());
++        }
++      } else {
++        // Default to txt files only if no extensions are specified
++        if (e->isTxtFile()) {
++          bitfieldMan_->addFilter(e->getOffset(), e->getLength());
++        }
++      }
+     }
+   }
+   bitfieldMan_->enableFilter();
+@@ -633,13 +644,32 @@
+ // not unittested
+ void DefaultPieceStorage::initStorage()
+ {
+-  if (downloadContext_->getFileEntries().size() == 1) {
++  // Filter file entries to only include files with allowed extensions
++  std::vector<std::shared_ptr<FileEntry>> filteredFileEntries;
++  for (const auto& fileEntry : downloadContext_->getFileEntries()) {
++    if (fileEntry->isRequested()) {
++      // Check if file extensions are specified in the option
++      if (option_ && !option_->get(PREF_FILE_EXTENSIONS).empty()) {
++        // Use the new extension filtering logic
++        if (fileEntry->hasAllowedExtension(option_->get(PREF_FILE_EXTENSIONS))) {
++          filteredFileEntries.push_back(fileEntry);
++        }
++      } else {
++        // Default to txt files only if no extensions are specified
++        if (fileEntry->isTxtFile()) {
++          filteredFileEntries.push_back(fileEntry);
++        }
++      }
++    }
++  }
++
++  if (filteredFileEntries.size() == 1) {
+     A2_LOG_DEBUG("Instantiating DirectDiskAdaptor");
+     auto directDiskAdaptor = std::make_shared<DirectDiskAdaptor>();
+     directDiskAdaptor->setTotalLength(downloadContext_->getTotalLength());
+     directDiskAdaptor->setFileEntries(
+-        downloadContext_->getFileEntries().begin(),
+-        downloadContext_->getFileEntries().end());
++        filteredFileEntries.begin(),
++        filteredFileEntries.end());
+ 
+     directDiskAdaptor->setDiskWriter(
+         diskWriterFactory_->newDiskWriter(directDiskAdaptor->getFilePath()));
+@@ -648,8 +678,8 @@
+   else {
+     A2_LOG_DEBUG("Instantiating MultiDiskAdaptor");
+     auto multiDiskAdaptor = std::make_shared<MultiDiskAdaptor>();
+-    multiDiskAdaptor->setFileEntries(downloadContext_->getFileEntries().begin(),
+-                                     downloadContext_->getFileEntries().end());
++    multiDiskAdaptor->setFileEntries(filteredFileEntries.begin(),
++                                     filteredFileEntries.end());
+     multiDiskAdaptor->setPieceLength(downloadContext_->getPieceLength());
+     diskAdaptor_ = std::move(multiDiskAdaptor);
+   }
+diff -uNr -x '*.json' aria2-master/src/FileEntry.cc aria2-modified/src/FileEntry.cc
+--- aria2-master/src/FileEntry.cc	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/FileEntry.cc	2026-01-27 09:49:58.000000000 +0800
+@@ -36,6 +36,7 @@
+ 
+ #include <cassert>
+ #include <algorithm>
++#include <sstream>
+ 
+ #include "util.h"
+ #include "URISelector.h"
+@@ -613,4 +614,55 @@
+   }
+ }
+ 
++bool FileEntry::isTxtFile() const
++{
++  const std::string& path = getPath();
++  size_t pos = path.rfind('.');
++  if (pos != std::string::npos) {
++    std::string ext = path.substr(pos + 1);
++    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
++    return ext == "txt";
++  }
++  return false;
++}
++
++bool FileEntry::hasAllowedExtension(const std::string& extensions) const
++{
++  if (extensions.empty()) {
++    return false;
++  }
++
++  const std::string& path = getPath();
++  size_t pos = path.rfind('.');
++  if (pos == std::string::npos) {
++    return false;
++  }
++
++  std::string ext = path.substr(pos + 1);
++  if (ext.empty()) {
++    return false;
++  }
++
++  // Convert extension to lowercase for comparison
++  std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
++
++  // Parse the comma-separated list of allowed extensions
++  std::istringstream iss(extensions);
++  std::string allowedExt;
++  while (std::getline(iss, allowedExt, ',')) {
++    // Trim whitespace
++    allowedExt.erase(0, allowedExt.find_first_not_of(" \t\r\n"));
++    allowedExt.erase(allowedExt.find_last_not_of(" \t\r\n") + 1);
++    
++    // Convert to lowercase for comparison
++    std::transform(allowedExt.begin(), allowedExt.end(), allowedExt.begin(), ::tolower);
++    
++    if (ext == allowedExt) {
++      return true;
++    }
++  }
++
++  return false;
++}
++
+ } // namespace aria2
+diff -uNr -x '*.json' aria2-master/src/FileEntry.h aria2-modified/src/FileEntry.h
+--- aria2-master/src/FileEntry.h	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/FileEntry.h	2026-01-27 09:48:14.000000000 +0800
+@@ -257,6 +257,12 @@
+   void setUniqueProtocol(bool f) { uniqueProtocol_ = f; }
+ 
+   bool isUniqueProtocol() const { return uniqueProtocol_; }
++
++  // Added method to check if file is a txt file
++  bool isTxtFile() const;
++  
++  // Check if file has an allowed extension based on comma-separated list
++  bool hasAllowedExtension(const std::string& extensions) const;
+ };
+ 
+ // Returns the first FileEntry which isRequested() method returns
+diff -uNr -x '*.json' aria2-master/src/MultiDiskAdaptor.cc aria2-modified/src/MultiDiskAdaptor.cc
+--- aria2-master/src/MultiDiskAdaptor.cc	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/MultiDiskAdaptor.cc	2026-01-27 09:55:33.000000000 +0800
+@@ -52,6 +52,8 @@
+ #include "SimpleRandomizer.h"
+ #include "WrDiskCacheEntry.h"
+ #include "OpenedFileCounter.h"
++#include "Option.h"
++#include "prefs.h"
+ 
+ namespace aria2 {
+ 
+@@ -114,7 +116,7 @@
+   return *fileEntry_ < *entry.fileEntry_;
+ }
+ 
+-MultiDiskAdaptor::MultiDiskAdaptor() : pieceLength_{0}, readOnly_{false} {}
++MultiDiskAdaptor::MultiDiskAdaptor(const Option* option) : pieceLength_{0}, readOnly_{false}, option_{option} {}
+ 
+ MultiDiskAdaptor::~MultiDiskAdaptor() { closeFile(); }
+ 
+@@ -136,7 +138,21 @@
+     return;
+   }
+   for (auto& fileEntry : getFileEntries()) {
+-    diskWriterEntries_.push_back(createDiskWriterEntry(fileEntry));
++    // Only create DiskWriterEntry for files with allowed extensions
++    if (fileEntry->isRequested()) {
++      // Check if file extensions are specified in the option
++      if (option_ && !option_->get(PREF_FILE_EXTENSIONS).empty()) {
++        // Use the new extension filtering logic
++        if (fileEntry->hasAllowedExtension(option_->get(PREF_FILE_EXTENSIONS))) {
++          diskWriterEntries_.push_back(createDiskWriterEntry(fileEntry));
++        }
++      } else {
++        // Default to txt files only if no extensions are specified
++        if (fileEntry->isTxtFile()) {
++          diskWriterEntries_.push_back(createDiskWriterEntry(fileEntry));
++        }
++      }
++    }
+   }
+   // TODO Currently, pieceLength_ == 0 is used for unit testing only.
+   if (pieceLength_ > 0) {
+diff -uNr -x '*.json' aria2-master/src/MultiDiskAdaptor.h aria2-modified/src/MultiDiskAdaptor.h
+--- aria2-master/src/MultiDiskAdaptor.h	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/MultiDiskAdaptor.h	2026-01-27 09:54:47.000000000 +0800
+@@ -102,6 +102,8 @@
+   std::vector<DiskWriterEntry*> openedDiskWriterEntries_;
+ 
+   bool readOnly_;
++  
++  const Option* option_;
+ 
+   void resetDiskWriterEntries();
+ 
+@@ -113,61 +115,61 @@
+   static const int DEFAULT_MAX_OPEN_FILES = 100;
+ 
+ public:
+-  MultiDiskAdaptor();
++  MultiDiskAdaptor(const Option* option = nullptr);
+   ~MultiDiskAdaptor();
+ 
+-  virtual void initAndOpenFile() CXX11_OVERRIDE;
++  virtual void initAndOpenFile() override;
+ 
+-  virtual void openFile() CXX11_OVERRIDE;
++  virtual void openFile() override;
+ 
+-  virtual void openExistingFile() CXX11_OVERRIDE;
++  virtual void openExistingFile() override;
+ 
+-  virtual void closeFile() CXX11_OVERRIDE;
++  virtual void closeFile() override;
+ 
+   virtual void writeData(const unsigned char* data, size_t len,
+-                         int64_t offset) CXX11_OVERRIDE;
++                         int64_t offset) override;
+ 
+   virtual ssize_t readData(unsigned char* data, size_t len,
+-                           int64_t offset) CXX11_OVERRIDE;
++                           int64_t offset) override;
+ 
+   virtual ssize_t readDataDropCache(unsigned char* data, size_t len,
+-                                    int64_t offset) CXX11_OVERRIDE;
++                                    int64_t offset) override;
+ 
+-  virtual void writeCache(const WrDiskCacheEntry* entry) CXX11_OVERRIDE;
++  virtual void writeCache(const WrDiskCacheEntry* entry) override;
+ 
+-  virtual void flushOSBuffers() CXX11_OVERRIDE;
++  virtual void flushOSBuffers() override;
+ 
+-  virtual bool fileExists() CXX11_OVERRIDE;
++  virtual bool fileExists() override;
+ 
+-  virtual int64_t size() CXX11_OVERRIDE;
++  virtual int64_t size() override;
+ 
+   virtual std::unique_ptr<FileAllocationIterator>
+-  fileAllocationIterator() CXX11_OVERRIDE;
++  fileAllocationIterator() override;
+ 
+-  virtual void enableReadOnly() CXX11_OVERRIDE;
++  virtual void enableReadOnly() override;
+ 
+-  virtual void disableReadOnly() CXX11_OVERRIDE;
++  virtual void disableReadOnly() override;
+ 
+-  virtual bool isReadOnlyEnabled() const CXX11_OVERRIDE { return readOnly_; }
++  virtual bool isReadOnlyEnabled() const override { return readOnly_; }
+ 
+   // Enables mmap feature. This method must be called after files are
+   // opened.
+-  virtual void enableMmap() CXX11_OVERRIDE;
++  virtual void enableMmap() override;
+ 
+   void setPieceLength(int32_t pieceLength) { pieceLength_ = pieceLength; }
+ 
+   int32_t getPieceLength() const { return pieceLength_; }
+ 
+-  virtual void cutTrailingGarbage() CXX11_OVERRIDE;
++  virtual void cutTrailingGarbage() override;
+ 
+-  virtual size_t utime(const Time& actime, const Time& modtime) CXX11_OVERRIDE;
++  virtual size_t utime(const Time& actime, const Time& modtime) override;
+ 
+   const DiskWriterEntries& getDiskWriterEntries() const
+   {
+     return diskWriterEntries_;
+   }
+ 
+-  virtual size_t tryCloseFile(size_t numClose) CXX11_OVERRIDE;
++  virtual size_t tryCloseFile(size_t numClose) override;
+ };
+ 
+ } // namespace aria2
+diff -uNr -x '*.json' aria2-master/src/OptionHandlerFactory.cc aria2-modified/src/OptionHandlerFactory.cc
+--- aria2-master/src/OptionHandlerFactory.cc	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/OptionHandlerFactory.cc	2026-01-27 14:19:44.000000000 +0800
+@@ -1547,6 +1547,26 @@
+   }
+   {
+     OptionHandler* op(new DefaultOptionHandler(
++        PREF_FILE_EXTENSIONS, TEXT_FILE_EXTENSIONS, "txt", 
++        "comma separated file extensions (e.g., \"txt,pdf,doc\")"));
++    op->addTag(TAG_BITTORRENT);
++    op->setInitialOption(true);
++    op->setChangeGlobalOption(true);
++    op->setChangeOptionForReserved(true);
++    handlers.push_back(op);
++  }
++  {
++    OptionHandler* op(new DefaultOptionHandler(
++        PREF_FILE_SIZE_FILTER, TEXT_FILE_SIZE_FILTER, "0",
++        "minimum file size in bytes (e.g., \"1048576\" for 1MB)"));
++    op->addTag(TAG_BITTORRENT);
++    op->setInitialOption(true);
++    op->setChangeGlobalOption(true);
++    op->setChangeOptionForReserved(true);
++    handlers.push_back(op);
++  }
++  {
++    OptionHandler* op(new DefaultOptionHandler(
+         PREF_BT_LPD_INTERFACE, TEXT_BT_LPD_INTERFACE, NO_DEFAULT_VALUE,
+         "interface, IP address", OptionHandler::REQ_ARG));
+     op->addTag(TAG_BITTORRENT);
+diff -uNr -x '*.json' aria2-master/src/bittorrent_helper.cc aria2-modified/src/bittorrent_helper.cc
+--- aria2-master/src/bittorrent_helper.cc	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/bittorrent_helper.cc	2026-01-27 14:22:41.000000000 +0800
+@@ -37,6 +37,7 @@
+ #include <cassert>
+ #include <cstring>
+ #include <algorithm>
++#include <cstddef>
+ 
+ #include "DownloadContext.h"
+ #include "Randomizer.h"
+@@ -210,7 +211,7 @@
+   }
+   torrent->name = utf8Name;
+   int maxConn = option->getAsInt(PREF_MAX_CONNECTION_PER_SERVER);
+-  std::vector<std::shared_ptr<FileEntry>> fileEntries;
++  std::vector<std::shared_ptr<FileEntry> > fileEntries;
+   const List* filesList = downcast<List>(infoDict->get(C_FILES));
+   if (filesList) {
+     fileEntries.reserve(filesList->size());
+@@ -297,6 +298,48 @@
+       fileEntries.push_back(fileEntry);
+       offset += fileEntry->getLength();
+     }
++    
++    // Apply file extension and size filtering for multi-file torrents
++    if (!fileEntries.empty() && torrent->mode == BT_FILE_MODE_MULTI) {
++      std::string allowedExtensions = option->get(PREF_FILE_EXTENSIONS);
++      if (allowedExtensions.empty()) {
++        // Default to "txt" if no extensions are specified
++        allowedExtensions = "txt";
++      }
++      
++      // Get minimum file size filter
++      int64_t minFileSize = option->getAsInt(PREF_FILE_SIZE_FILTER);
++      
++      // Count how many files have allowed extensions and how many don't
++      size_t allowedCount = 0;
++      size_t notAllowedCount = 0;
++      for (auto& fileEntry : fileEntries) {
++        bool hasAllowedExtension = fileEntry->hasAllowedExtension(allowedExtensions);
++        bool hasRequiredSize = fileEntry->getLength() >= minFileSize;
++        
++        if (hasAllowedExtension && hasRequiredSize) {
++          allowedCount++;
++        } else {
++          notAllowedCount++;
++        }
++      }
++      
++      // Only apply filtering if there are both allowed and not allowed files
++      if (fileEntries.size() > 1 && allowedCount > 0 && notAllowedCount > 0) {
++        for (auto& fileEntry : fileEntries) {
++          bool hasAllowedExtension = fileEntry->hasAllowedExtension(allowedExtensions);
++          bool hasRequiredSize = fileEntry->getLength() >= minFileSize;
++          
++          // Only set as requested if both extension AND size criteria are met
++          if (hasAllowedExtension && hasRequiredSize) {
++            fileEntry->setRequested(true);
++          } else {
++            fileEntry->setRequested(false);
++          }
++        }
++      }
++      // If all files are allowed or none are allowed, leave all as requested (true)
++    }
+   }
+   else {
+     // single-file mode;
+diff -uNr -x '*.json' aria2-master/src/prefs.cc aria2-modified/src/prefs.cc
+--- aria2-master/src/prefs.cc	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/prefs.cc	2026-01-27 14:19:44.000000000 +0800
+@@ -569,6 +569,12 @@
+ // values: true | false
+ PrefPtr PREF_BT_LOAD_SAVED_METADATA = makePref("bt-load-saved-metadata");
+ 
++// values: comma separated file extensions (e.g., "txt,pdf,doc")
++PrefPtr PREF_FILE_EXTENSIONS = makePref("file-extensions");
++
++// values: 1*digit
++PrefPtr PREF_FILE_SIZE_FILTER = makePref("file-size-filter");
++
+ /**
+  * Metalink related preferences
+  */
+diff -uNr -x '*.json' aria2-master/src/prefs.h aria2-modified/src/prefs.h
+--- aria2-master/src/prefs.h	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/prefs.h	2026-01-27 16:44:23.000000000 +0800
+@@ -520,6 +520,12 @@
+ // values: true | false
+ extern PrefPtr PREF_BT_LOAD_SAVED_METADATA;
+ 
++// values: comma separated file extensions (e.g., "txt,pdf,doc")
++extern PrefPtr PREF_FILE_EXTENSIONS;
++
++// values: 1*digit
++extern PrefPtr PREF_FILE_SIZE_FILTER;
++
+ /**
+  * Metalink related preferences
+  */
+diff -uNr -x '*.json' aria2-master/src/usage_text.h aria2-modified/src/usage_text.h
+--- aria2-master/src/usage_text.h	2025-11-24 15:07:53.000000000 +0800
++++ aria2-modified/src/usage_text.h	2026-01-27 14:22:41.000000000 +0800
+@@ -1130,4 +1130,10 @@
+     "                              successful, then skip downloading metadata from\n" \
+     "                              DHT.")
+ 
++#define TEXT_FILE_SIZE_FILTER                   \
++  _(" --file-size-filter=SIZE        Filter files by size, only download files that are\n" \
++    "                              larger than or equal to SIZE bytes. Only applies to\n" \
++    "                              multi-file torrents and works together with\n" \
++    "                              --file-extensions option. Use 0 to disable filtering.")
++
+ // clang-format on
