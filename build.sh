@@ -474,12 +474,16 @@ build_aria2() {
   # fi
   # mkdir -p "/usr/src/aria2-${aria2_tag}"
   # tar -xf "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz" --strip-components=1 -C "/usr/src/aria2-${aria2_tag}"
+  commit=b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25
+  wget "https://github.com/aria2/aria2/archive/${commit}.zip"
+  
   mkdir -p /usr/src
-  git clone --single-branch --depth 1 -b master https://github.com/aria2/aria2.git
-  cp diff.patch /usr/src/aria2/
-  cd "/usr/src/aria2"
-  git fetch origin b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25 --depth=1
-  git checkout b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25
+  # git clone --single-branch --depth 1 -b master https://github.com/aria2/aria2.git
+  unzip "${commit}.zip" -d /usr/src/
+  cp diff.patch "/usr/src/aria2-${commit}"
+  cd "/usr/src/aria2-${commit}"
+  # git fetch origin b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25 --depth=1
+  # git checkout b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25
   patch -p1 < diff.patch
   if [ ! -f ./configure ]; then
     autoreconf -i
