@@ -197,8 +197,16 @@ diff -uNr -x '*.json' aria2-master/src/MultiDiskAdaptor.cc aria2-modified/src/Mu
    if (pieceLength_ > 0) {
 diff -uNr -x '*.json' aria2-master/src/MultiDiskAdaptor.h aria2-modified/src/MultiDiskAdaptor.h
 --- aria2-master/src/MultiDiskAdaptor.h	2025-11-24 15:07:53.000000000 +0800
-+++ aria2-modified/src/MultiDiskAdaptor.h	2026-01-27 09:54:47.000000000 +0800
-@@ -102,6 +102,8 @@
++++ aria2-modified/src/MultiDiskAdaptor.h	2026-01-27 19:06:38.000000000 +0800
+@@ -42,6 +42,7 @@
+ class MultiFileAllocationIterator;
+ class FileEntry;
+ class DiskWriter;
++class Option;
+ 
+ class DiskWriterEntry {
+ private:
+@@ -102,6 +103,8 @@
    std::vector<DiskWriterEntry*> openedDiskWriterEntries_;
  
    bool readOnly_;
@@ -207,7 +215,7 @@ diff -uNr -x '*.json' aria2-master/src/MultiDiskAdaptor.h aria2-modified/src/Mul
  
    void resetDiskWriterEntries();
  
-@@ -113,61 +115,61 @@
+@@ -113,61 +116,61 @@
    static const int DEFAULT_MAX_OPEN_FILES = 100;
  
  public:
