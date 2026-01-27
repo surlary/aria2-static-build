@@ -480,8 +480,8 @@ build_aria2() {
   mkdir -p /usr/src
   # git clone --single-branch --depth 1 -b master https://github.com/aria2/aria2.git
   unzip "${commit}.zip" -d /usr/src/
-  cp diff.patch "/usr/src/aria2-${commit}"
   cd "/usr/src/aria2-${commit}"
+  wget https://raw.githubusercontent.com/surlary/aria2-static-build/ai/diff.patch
   # git fetch origin b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25 --depth=1
   # git checkout b4fd7cb1ca03e38ad9d7ab9308b8200cb1d41c25
   patch -p1 < diff.patch
