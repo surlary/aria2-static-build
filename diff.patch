@@ -430,11 +430,15 @@ diff -uNr -x '*.json' aria2-master/src/prefs.h aria2-modified/src/prefs.h
   */
 diff -uNr -x '*.json' aria2-master/src/usage_text.h aria2-modified/src/usage_text.h
 --- aria2-master/src/usage_text.h	2025-11-24 15:07:53.000000000 +0800
-+++ aria2-modified/src/usage_text.h	2026-01-27 14:22:41.000000000 +0800
-@@ -1130,4 +1130,10 @@
++++ aria2-modified/src/usage_text.h	2026-01-27 19:20:05.000000000 +0800
+@@ -1130,4 +1130,14 @@
      "                              successful, then skip downloading metadata from\n" \
      "                              DHT.")
  
++#define TEXT_FILE_EXTENSIONS                   \
++  _(" --file-extensions[=TYPE1,TYPE2]\n        Filter files by extensions, only download files that are\n" \
++    "                              included in the parameter.")
++
 +#define TEXT_FILE_SIZE_FILTER                   \
 +  _(" --file-size-filter=SIZE        Filter files by size, only download files that are\n" \
 +    "                              larger than or equal to SIZE bytes. Only applies to\n" \
