@@ -77,6 +77,6 @@ jobs:
       - name: Upload compiled data
         uses: actions/upload-artifact@v4
         with:
-          name: bins
+          name: ${{ env.ARCHIVE_NAME }}
           path: |
             /tmp/${{ env.ARCHIVE_NAME }}
