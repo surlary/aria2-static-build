@@ -79,4 +79,4 @@ jobs:
         with:
           name: bins
           path: |
-            "/tmp/${{ env.ARCHIVE_NAME }}"
+            /tmp/${{ env.ARCHIVE_NAME }}
