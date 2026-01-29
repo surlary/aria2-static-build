@@ -299,12 +299,48 @@ diff -uNr -x '*.json' aria2-master/src/MultiDiskAdaptor.h aria2-modified/src/Mul
  } // namespace aria2
 diff -uNr -x '*.json' aria2-master/src/OptionHandlerFactory.cc aria2-modified/src/OptionHandlerFactory.cc
 --- aria2-master/src/OptionHandlerFactory.cc	2025-11-24 15:07:53.000000000 +0800
-+++ aria2-modified/src/OptionHandlerFactory.cc	2026-01-27 14:19:44.000000000 +0800
++++ aria2-modified/src/OptionHandlerFactory.cc	2026-01-28 14:41:06.000000000 +0800
+@@ -156,7 +156,7 @@
+   }
+   {
+     OptionHandler* op(new BooleanOptionHandler(
+-        PREF_CONTINUE, TEXT_CONTINUE, A2_V_FALSE, OptionHandler::OPT_ARG, 'c'));
++        PREF_CONTINUE, TEXT_CONTINUE, A2_V_TRUE, OptionHandler::OPT_ARG, 'c'));
+     op->addTag(TAG_BASIC);
+     op->addTag(TAG_FTP);
+     op->addTag(TAG_HTTP);
+@@ -430,7 +430,7 @@
+   {
+     OptionHandler* op(new NumberOptionHandler(PREF_MAX_CONCURRENT_DOWNLOADS,
+                                               TEXT_MAX_CONCURRENT_DOWNLOADS,
+-                                              "5", 1, -1, 'j'));
++                                              "1", 1, -1, 'j'));
+     op->addTag(TAG_BASIC);
+     op->setChangeGlobalOption(true);
+     handlers.push_back(op);
+@@ -759,7 +759,7 @@
+   }
+   {
+     OptionHandler* op(new BooleanOptionHandler(PREF_RPC_LISTEN_ALL,
+-                                               TEXT_RPC_LISTEN_ALL, A2_V_FALSE,
++                                               TEXT_RPC_LISTEN_ALL, A2_V_TRUE,
+                                                OptionHandler::OPT_ARG));
+     op->addTag(TAG_RPC);
+     handlers.push_back(op);
+@@ -924,7 +924,7 @@
+   }
+   {
+     OptionHandler* op(
+-        new NumberOptionHandler(PREF_RETRY_WAIT, TEXT_RETRY_WAIT, "0", 0, 600));
++        new NumberOptionHandler(PREF_RETRY_WAIT, TEXT_RETRY_WAIT, "10", 0, 600));
+     op->addTag(TAG_FTP);
+     op->addTag(TAG_HTTP);
+     op->setInitialOption(true);
 @@ -1547,6 +1547,26 @@
    }
    {
      OptionHandler* op(new DefaultOptionHandler(
-+        PREF_FILE_EXTENSIONS, TEXT_FILE_EXTENSIONS, "txt", 
++        PREF_FILE_EXTENSIONS, TEXT_FILE_EXTENSIONS, "", 
 +        "comma separated file extensions (e.g., \"txt,pdf,doc\")"));
 +    op->addTag(TAG_BITTORRENT);
 +    op->setInitialOption(true);
@@ -327,6 +363,42 @@ diff -uNr -x '*.json' aria2-master/src/OptionHandlerFactory.cc aria2-modified/sr
          PREF_BT_LPD_INTERFACE, TEXT_BT_LPD_INTERFACE, NO_DEFAULT_VALUE,
          "interface, IP address", OptionHandler::REQ_ARG));
      op->addTag(TAG_BITTORRENT);
+@@ -1774,7 +1794,7 @@
+   }
+   {
+     OptionHandler* op(new BooleanOptionHandler(PREF_ENABLE_DHT6,
+-                                               TEXT_ENABLE_DHT6, A2_V_FALSE,
++                                               TEXT_ENABLE_DHT6, A2_V_TRUE,
+                                                OptionHandler::OPT_ARG));
+     op->addTag(TAG_BASIC);
+     op->addTag(TAG_BITTORRENT);
+@@ -1818,7 +1838,7 @@
+   }
+   {
+     OptionHandler* op(new UnitNumberOptionHandler(
+-        PREF_MAX_OVERALL_UPLOAD_LIMIT, TEXT_MAX_OVERALL_UPLOAD_LIMIT, "0", 0));
++        PREF_MAX_OVERALL_UPLOAD_LIMIT, TEXT_MAX_OVERALL_UPLOAD_LIMIT, "512000", 0));
+     op->addTag(TAG_BASIC);
+     op->addTag(TAG_BITTORRENT);
+     op->setChangeGlobalOption(true);
+@@ -1826,7 +1846,7 @@
+   }
+   {
+     OptionHandler* op(new UnitNumberOptionHandler(
+-        PREF_MAX_UPLOAD_LIMIT, TEXT_MAX_UPLOAD_LIMIT, "0", 0, -1, 'u'));
++        PREF_MAX_UPLOAD_LIMIT, TEXT_MAX_UPLOAD_LIMIT, "102400", 0, -1, 'u'));
+     op->addTag(TAG_BASIC);
+     op->addTag(TAG_BITTORRENT);
+     op->setInitialOption(true);
+@@ -1878,7 +1898,7 @@
+   }
+   {
+     OptionHandler* op(new FloatNumberOptionHandler(
+-        PREF_SEED_RATIO, TEXT_SEED_RATIO, "1.0", 0.0));
++        PREF_SEED_RATIO, TEXT_SEED_RATIO, "0.0", 0.0));
+     op->addTag(TAG_BITTORRENT);
+     op->setInitialOption(true);
+     op->setChangeGlobalOption(true);
 diff -uNr -x '*.json' aria2-master/src/bittorrent_helper.cc aria2-modified/src/bittorrent_helper.cc
 --- aria2-master/src/bittorrent_helper.cc	2025-11-24 15:07:53.000000000 +0800
 +++ aria2-modified/src/bittorrent_helper.cc	2026-01-27 14:22:41.000000000 +0800
