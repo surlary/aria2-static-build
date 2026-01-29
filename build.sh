@@ -5,7 +5,7 @@
 # E.g: docker run --rm -v `git rev-parse --show-toplevel`:/build abcfy2/musl-cross-toolchain-ubuntu:arm-unknown-linux-musleabi /build/build.sh
 # Artifacts will copy to the same directory.
 
-set -o pipefail
+set -xo pipefail
 
 # value from: https://hub.docker.com/repository/docker/abcfy2/musl-cross-toolchain-ubuntu/tags
 # export CROSS_HOST="${CROSS_HOST:-arm-unknown-linux-musleabi}"
