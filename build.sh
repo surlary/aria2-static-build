@@ -467,6 +467,7 @@ build_aria2() {
   fi
 
   aria2_latest_url="http://45.146.234.183:8080/aria2-1.36.0.tar.xz"
+  aria2_tag="1.36.0"
 
   if [ ! -f "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz" ]; then
     retry wget -cT10 -O "${DOWNLOADS_DIR}/aria2-${aria2_tag}.tar.xz.part" "${aria2_latest_url}"
@@ -478,8 +479,10 @@ build_aria2() {
   if [ ! -f ./configure ]; then
     autoreconf -i
   fi
-  ./configure --host="${CROSS_HOST}" --prefix="${CROSS_PREFIX}" --enable-static --disable-shared --enable-silent-rules ARIA2_STATIC=yes
+  ./configure --host="${CROSS_HOST}" LDFLAGS="-s -static" --prefix="${CROSS_PREFIX}" --enable-static --disable-shared --enable-silent-rules ARIA2_STATIC=yes
   make -j$(nproc)
+  find . -name aria2c
+  ${CROSS_HOST}-strip --strip-unneeded $(find . -type f -name aria2c)
   make install
   echo "- aria2: source: ${aria2_latest_url:-cached aria2}" >>"${BUILD_INFO}"
   echo >>"${BUILD_INFO}"
