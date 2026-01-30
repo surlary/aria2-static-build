@@ -522,6 +522,8 @@ build__aria2() {
   fi
   ./configure --host="${CROSS_HOST}" LDFLAGS="-s -static" --prefix="${CROSS_PREFIX}" --enable-static --disable-shared --enable-silent-rules ARIA2_STATIC=yes
   make -j$(nproc)
+  find . -name aria2c
+  ${CROSS_HOST}-strip --strip-unneeded $(find . -name aria2c)
   make install
   echo "- aria2: source: ${aria2_latest_url:-cached aria2}" >>"${BUILD_INFO}"
   echo >>"${BUILD_INFO}"
