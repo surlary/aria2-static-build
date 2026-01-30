@@ -520,7 +520,7 @@ build__aria2() {
   if [ ! -f ./configure ]; then
     autoreconf -i
   fi
-  ./configure --host="${CROSS_HOST}" --prefix="${CROSS_PREFIX}" --enable-static --disable-shared --enable-silent-rules ARIA2_STATIC=yes
+  ./configure --host="${CROSS_HOST}" LDFLAGS="-s -static" --prefix="${CROSS_PREFIX}" --enable-static --disable-shared --enable-silent-rules ARIA2_STATIC=yes
   make -j$(nproc)
   make install
   echo "- aria2: source: ${aria2_latest_url:-cached aria2}" >>"${BUILD_INFO}"
